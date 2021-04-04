@@ -1,3 +1,4 @@
+
 # FILE: wikipedia_game.py
 # AUTHOR: Christopher Simard
 # DESCRIPTION: plays wikipedia given start and end wikipedia pages
@@ -9,6 +10,9 @@
 import pandas as pd
 import wikipedia
 import time
+
+# load structures
+from structures import *
 
 # play game
 start = time.time()
@@ -27,38 +31,53 @@ def wikipedia_game(page_start, page_end):
         print('End page does not exist.')
         return
 
-    # initialize search
-    i = 0
-    clicks = 0
-    q = pd.DataFrame({'page': [page_start], 'clicks': [clicks]})
-    page_current = page_start
+    # initialize tree object
+    tree = Tree(page_start)
 
     # plays game
-    while page_current != page_end:
+    i = 0
+    links_all = []
+    a = []
+    while a != page_end:
 
-        # find new links in current page
-        try:
-            page = wikipedia.page(q.page[i])
-            page_current = page.title
-            links = page.links
-            links = list(set(links) - set(q.page))
+        # collect nodes in tree level
+        level = list(tree.get_level_nodes(i))
 
-            # check if end page exists in new links
-            if page_end in links:
-                page_current = page_end
+        # loop over nodes in level
+        for j in level:
 
-            # if end page not in links, append new links to queue
-            links = pd.DataFrame({'page': links, 'clicks': [q.clicks[i] + 1] * len(links)})
-            q = q.append(links, ignore_index=True)
+            # ends game if eng_page found
+            if a == page_end:
+                break
 
-            # load next page
-            i = i + 1
-        except:
-            pass
+            try:
+                temp = wikipedia.page(j.name)
+            except:
+                pass
+            links = list(set(temp.links) - set(links_all))
+            links_all = links_all + links
+
+            # add links as new children
+            m = 0
+            for k in links:
+                j.add_child(k)
+                if k == page_end:
+                    page_current = j.children[m]
+                    a = page_current.name
+                    break
+                m = m + 1
+
+        # iterate level
+        i = i + 1
+
+    # recover path
+    path = page_current.get_path()
+    path.reverse()
 
     # compute game time
     end = time.time()
     delta = end - start
 
     # return # of clicks and time of game
-    print(page_end, "found in", q.clicks[i] + 1, "clicks, over %1.2f seconds!" % delta)
+    print(page_end, "found in", page_current.level, "clicks, over %1.2f seconds!" % delta)
+    print("The path to find", page_end, "is:", (', '.join(path)))
